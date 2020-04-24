@@ -1,0 +1,88 @@
+Math Command for Tandy MC-10 and TRS-80 Color Computer
+
+Welcome to Math Command, the arithmetic action game. Written in 100% BASIC, 
+it will run on any Model Color Computer, including the MC-10, and requires
+only 4 kilobytes of RAM.
+
+Loading the Game: At the READY prompt, type CLOAD "MATHCMD" if loading 
+from tape or LOAD "MATHCMD" if loading from disk, then press ENTER. 
+To load in Virtual MC-10, either use the CLOAD command then menu option 
+File -> Play Cassette File.. and select file "MATHCMD.C10" or use menu 
+option File -> Quick Type... and select file "mathcmd.bas". 
+To load in XRoar, use menu option File -> Run... and select file 
+"mathcmd.bas", use menu option File -> Cassette -> Input Tape... and 
+select file "MATHCMD.CAS" then type CLOAD "MATHCMD" and press ENTER, 
+or use menu option Drive 1 -> Insert Disk... and select file "mathcmd.dsk"
+then type RUN "MATHCMD" and press ENTER.
+
+Starting the Game: At the OK prompt, type RUN and press ENTER.
+
+The Keyboard: All input is case-insensitive, so the SHIFT key does not need 
+to be pressed. 
+
+Startup Screen: Choose which type of math facts to practice (addition, 
+subtraction, multiplication, or division) by pressing the appropriate key, 
+or press the "Q" key to quit. 
+
+Playing the Game: At the beginning of each level, four cities appear at the 
+bottom of the screen. A math missile will then begin to fall towards one of 
+the cities. To destroy the missile, type the correct answer to the math 
+problem.
+
+Entering the Answer: As you type, the answer will appear in the missile 
+base at the bottom of the screen. As soon as the correct answer appears,
+the math missile will be destroyed. To clear the answer press the space 
+bar. If an incorrect answer is entered, the answer is automatically clear.
+
+Losing Cities: If a math missile falls all the way to the bottom of the 
+screen without the correct answer being entered, the city will be destroyed. 
+If all cities are destroyed, the game ends.
+
+Ending a Level: A level ends after twenty-five math missiles have dropped. 
+The remaining cities are counted, and the next level begins. The math 
+missiles fall progressively faster in each level.
+
+Exiting the game: You may quit the current game at any time by pressing the 
+"Q" key.
+
+Scoring: Each time a missile is destroyed, points are awarded based on the 
+difficulty and the level. In addition, bonus points ar awarded for each city 
+remaining at the end of each level.
+
+File List:
+
+  mathcmd.bas   Program in ASCII Format for Quick Type
+  mathcmd.txt   Documentation
+  MATHCMD.C10   Cassette image for MC-10 Emulator
+  MATHCMD.CAS   Cassette image for Color Computer Emulator
+  mathcmd.dsk   Disk image for Color Computer Emulator
+
+Author's Notes:
+
+I've seen a number of math facts games over the years, but none of them 
+appealed to me until I saw "Tux of Math Command," an open source game based 
+loosely on "Missile Command."
+
+There were a couple of things I didn't like about "Tux of Math Command," 
+however: it requires a fairly modern processor, and there wasn't an easy 
+way to practice a single type of fact.
+
+The original version of Math Command was written in February of 2010 for the 
+Tandy Model 100 and 102 and submitted to the 27th Anniversary Model 100 
+Programming Contest on the club100.org web site. In 2020, I ported the gane 
+to other microcomputers, first the Commodore VIC-20, then the Tandy MC-10 and
+Color Computer.
+
+To ensure compatability with both Color BASIC and Microcolor BASIC along 
+with various emulators, there are several conventions that were followed in
+the "mathcmd.bas" file. First, the Quick Type option in Virtual MC-10 does 
+not support mixed upper and lower case, so all text in the program is upper
+case. Second, while the MC-10 allows entry of block graphics characters from
+the keyboard, the Color Computer does not, thus all block graphics are 
+encoded using the CHR$() function. Third, Virtual MC-10's Quic Type option
+does not support the square bracket characters "[" and "]" because they are
+not on the MC-10 keyboard, therefore they printed using CHR$(91) and CHR$(93),
+respectively.
+
+
+-Curtis F Kaylor, 3 Feb 2020
