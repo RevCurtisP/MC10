@@ -1,0 +1,133 @@
+TAPEDIR - Tape Directory Lister for the Color Microcomputer MC-10
+
+This program reads all the files saved on a disk and lists the files
+on the screen or a printer. It should recognize all standard MC-10 and 
+Color Computer files, however, it will only run on an MC-10. 
+
+Loading the Program
+
+On a real MC-10, insert the cassette, type CLOAD "TAPEDIR" and press
+ENTER, then press the play button on the cassette deck.
+
+When using Virtual MC-10, type CLOAD "TAPEDIR" and press ENTER, then
+select menu option File - Play Cassette File...  and open TAPEDIR.C10
+
+Running the Program
+
+Insert the cassette with the files to be listed and rewind it to the
+beginning, if needed. Type RUN and press ENTER. The screen will show
+
+  CASSETTE FILE DIRECTORY
+  (S)CREEN OR (P)RINTER
+  
+Press S or P to select the output device. The screen will then show
+
+  PRESS PLAY ON TAPE
+  
+Press the play button on the cassette deck if using a real MC-10, or
+select menu option File - Play Cassette File...  and open the desired
+cassette image file if using Virtual MC-10.
+
+As the cassette plays, the program will read the header of each file 
+and print it to the screen or printer.
+
+Program Output
+
+The directory listing is in the following format
+
+  FILE     FILE DATA START  SIZE
+  NAME     TYPE TYPE  ADDR /ADDR
+  MC10PROG BAS  BIN           58
+  MC10EXEC M/L  BIN  17476 17408
+  MC10ARRY VAR  BIN           55
+  COCOPROG BAS  BIN  *COCO FILE*
+  ASCIPROG BAS  ASC  *COCO FILE*
+  ASCIFILE DAT  ASC  *COCO FILE*
+  COCOEXEC M/L  BIN  *COCO FILE*
+
+  File Name:  The name of the file as used with an MC-10 CLOAD, CLOAD*,
+              CLOADM, CSAVE, or CSAVE* statement, or a Color Computer
+              CLOAD, CLOADM, CSAVE, CSAVEM, or OPEN statement.
+  
+  File Type:  The file type, which may be one of the following:
+      
+              BAS - MC-10 or Color Computer BASIC program. 
+                    
+              DAT - Color Computer data file, created by the OPEN 
+                    statement.
+                    
+              M/L - MC-10 or Color Computer Machine language program.
+                    
+              VAR - MC-10 data file, created using the CSAVE* statement.
+                    
+              ??? - Non-standard or custom file type. These are created
+                    through some method other than a BASIC statement.
+ 
+  Data Type:  The format of the data stored in the file.
+  
+              ASC - The file contains ASCII text. This could be a Color
+                    Computer DAT file or a BAS file created using the
+                    CSAVE "filename",A command. The MC-10 does not
+                    recognize ASCII files. Although the MC-10 might
+                    CLOAD a BASIC program saved as ASCII without reporting
+                    an error, the result will be unusable.
+                                  
+              BIN - The file contains Binary data. This could be an M/L
+                    file, a VAR file, or a BAS file saved using the 
+                    CSAVE "filename" command. Although the MC-10 and
+                    Color Computer will each CLOAD a BASIC program 
+                    written for the other, the program will not run or
+                    list correctly, unless the tokens are converted.
+              
+  Start Addr: For M/L files, the program execution start address.
+
+  Size/Addr:  For BAS and VAR files, the size of the file data in bytes.
+              For M/L files, the load address of the program.
+              
+              If a Color Computer file is detected, the text *COCO FILE*
+              will be displayed in the last two columns. 
+
+Stopping the Program
+
+Since the MC-10 can not detect the end of a cassette, the program will
+continue running until the RESET button is pressed. 
+
+Alternatively, the program will stop running if it encounters an End
+of Tape Marker, which is a file with CHR$(255) as the first character
+of the file name. The End of Tape marker can be written by pressing
+the play and record buttons on the tape deck, then typing RUN 210 and
+pressing ENTER.
+
+Technical Information
+
+The Cassette Routines use the following memory locations
+
+   Address     Decimal  Offset  Name    Description
+  4257-425E  16983-16990        FNAM    File Name 
+  425F-426D  16691-17005        HEADER  Cassette Header Buffer
+
+The cassette header buffer is written to tape on a CSAVE or CSAVE*, and
+read from tape on a CLOAD, CLOAD*, or CLOADM. Tge cassette header 
+contains the following fields:
+
+   Address     Decimal  Offset  Name    Description
+  425F-4266     16991      0    FNAME   File Name (padded with spaces)
+    4267        16999      8    FTYPE   File Type (0=BAS, 1=DAT, 2=M/L, 4=VAR)
+    4268        17000      9    DTYPE   Data Type (0=BIN, 255=ASC)
+    4269        17001     10    GAPFLG  Gap Flag  (0=No Gaps, 255=Gaps)
+  426A-426B  17002-17003  11    XOFS    Machine Language Start Address
+                                        Contains 0 for other MC-10 file types.
+  426C-426D  17004-17005  13    LAL     Machine Language Load Address
+                                        File length for other MC-10 file types.
+
+When writing a header, the MC-10 pads FNAME with spaces and sets FTYPE to 0 
+for CSAVE, or 4 for CSAVE*. DTYPE and GAPFLG are always set to 0, and LAL 
+is set to the length of data being written to the tape. XOFS is not 
+explicitly set, so whatever bytes it contains at the time will be written
+to the cassette. This will usually be 0, since at power up, all bytes of 
+the header are set to 0, but may change anytime a CLOAD or or SKIPF command
+is run.
+
+When reading a header, the MC-10 checks compares FNAME against FNAM, if FNAM
+is populated, and verifies that FTYPE is 0 for CLOAD, 2 for CLOADM, or 4 for
+CLOAD*. The contents of DTYPE are ignored. 
