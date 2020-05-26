@@ -1,0 +1,74 @@
+Technical Information: MC-10 and Color Computer Cassette Routines
+
+The Cassette Routines use the following memory locations
+
+ ------- MC-10 -------  ------- Co-Co -------
+  Address    Decimal     Address     Decimal  Name    Description
+
+   421F                   009D                EXEADR  Default EXEC Address
+   4256       16982       01D1         465    FNLEN   File Name Length
+ 4257-425E 16983-16990  01D2-01D9    466-473  FNAM    File Name Buffer
+ 425F-426D 16691-17005  01DA-02D9    474-729  CASBUF  Header/Data Buffer
+   4275       17013       007C                BLKTYP  Block Type
+   4276       17014       007D                BLKLEN  Block Length
+ 4278-4279 17016-17017  007E-007F             CBUFAD  Buffer Address
+
+When writing blocks, the MC-10 and CoCo set Block Type to 0 for a Header 
+block, 1 for a Data block, and $FF (255) for an End of File (EOF) block.
+
+When reading blocks, the MC-10 recognize Block Type 0 as a Header block, 
+1 - 127 as a Data block, and 128 - 255 as an EOF block. However, after
+an EOF block is read the Error Flag is set to 255 - Block Type, so any
+value other than 255 will register as an error.
+
+The cassette header buffer is written to tape on a CSAVE or CSAVE*, and
+read from tape on a CLOAD, CLOAD*, or CLOADM. While the MC-10 has a 
+dedicated cassette header buffer, the CoCo uses the cassette data buffer:
+The cassette header contains the following fields.
+
+     ------- MC-10 -------  ------- Co-Co -------
+ Ofs  Address    Decimal     Address     Decimal  Name    Description
+  0  425F-4266    16991     01DA-01E1    474-481  FNAME   File Name 
+  8    4267       16999       01E2         482    FTYPE   File Type 
+  9    4268       17000       01E3         483    DTYPE   Data Type 
+ 10    4269       17001       01E4         484    GAPFLG  Gap Flag  
+ 11  426A-426B 17002-17003  01E5-01E6    485-486  XOFS    M/L EXEC Address
+ 13  426C-426D 17004-17005  01E7-01E8    487-488  LAL     M/L Load Address
+
+During a cold start on both the MC-10 and CoCo, the cassette header or
+data buffer is filled with the byte 0 (ASCII NUL).
+
+When doing a CSAVE (or CSAVE* on the MC-10), both the MC-10 and CoCo pad 
+FNAME with spaces, and set FTYPE and GAPFLG to 0. The MC-10 always sets 
+DTYPE to 0, while the CoCo sets it to 0 for a regular CSAVE or 255 for 
+CSAVE ,A. Neither the MC-10 or CoCo explicitly set XOFS. The MC-10 sets 
+LAL to the length of data being written to the tape, but the CoCo does not 
+explicitly set it.
+
+During an OPEN "O",-1,... the CoCo pads FNAME with spaces, sets FTYPE to 1,
+and both DTYPE and GAPFLG to 255. It does not explicitly set XOFS or LAL. 
+
+When doing a CSAVEM, the CoCo pads FNAME with spaces, sets FTYPE to 3,
+DTYPE and GAPFLG to 0, XOFS to the specified transfer address and LAL to 
+the specified start address. This is the only Basic command that sets all
+of the header fields.
+
+For any field that is not explicitly set by a Basic command, whatever data
+*happens to be in that field will be written to the tape header. 
+
+When reading a header, the MC-10 checks compares FNAME against FNAM (if 
+FNAM is populated) and verifies that FTYPE is 0 for CLOAD, 2 for CLOADM, 
+or 4 for CLOAD*. The contents of DTYPE and GAPFLG are ignored. CLOADM 
+adds the specified offset address (if any) to XOFS and LAL and stores
+the results in EXEADR and CBUFAD, while CLOAD and CLOAD* ignore XOFS 
+and issue an OM? error if the value in LAL exceeds the available Basic
+program or array variable space, respectively.
+
+The MC-10 expects File Type 0 for CLOAD, 2 for CLOADM, and 4 for CLOAD*,
+otherwise it will issue an FM? (Bad File Mode) error. It ignores Data Type
+and the Gap Flag, as all files are assumed to be binary and have no gaps
+between blocks. CLOADM uses Exec Offset to set the EXEC command default 
+address and Load Address to determine the start address of the loaded file,
+while CLOAD and CLOADV ignore XOFS and use Load Address as the files length.
+ 
+

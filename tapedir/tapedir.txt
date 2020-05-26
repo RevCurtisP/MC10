@@ -1,6 +1,6 @@
 TAPEDIR - Tape Directory Lister for the Color Microcomputer MC-10
 
-This program reads all the files saved on a disk and lists the files
+This program reads all the files saved on a cassette and lists them
 on the screen or a printer. It should recognize all standard MC-10 and 
 Color Computer files, however, it will only run on an MC-10. 
 
@@ -21,6 +21,12 @@ beginning, if needed. Type RUN and press ENTER. The screen will show
   (S)CREEN OR (P)RINTER
   
 Press S or P to select the output device. The screen will then show
+  
+  
+  (F)ORMATTED OR (R)AW
+  
+Press F or R to select the output format. Finally, the screen will 
+show
 
   PRESS PLAY ON TAPE
   
@@ -29,40 +35,45 @@ select menu option File - Play Cassette File...  and open the desired
 cassette image file if using Virtual MC-10.
 
 As the cassette plays, the program will read the header of each file 
-and print it to the screen or printer.
+and print it to the screen or printer. If printer output out was 
+selected the screen will ahow FOUND and the file name for each file
+found.
 
 Program Output
 
-The directory listing is in the following format
+The program has two output options: Formatted, which prints the file
+information as user-friendly text, and rRaw, which print the file 
+header contents in hexadecimal format.
 
-  FILE     FILE DATA START  SIZE
-  NAME     TYPE TYPE  ADDR /ADDR
-  MC10PROG BAS  BIN           58
-  MC10EXEC M/L  BIN  17476 17408
-  MC10ARRY VAR  BIN           55
-  COCOPROG BAS  BIN  *COCO FILE*
-  ASCIPROG BAS  ASC  *COCO FILE*
-  ASCIFILE DAT  ASC  *COCO FILE*
-  COCOEXEC M/L  BIN  *COCO FILE*
+In Formatted mode, the directory is printed as follows:
 
-  File Name:  The name of the file as used with an MC-10 CLOAD, CLOAD*,
+           FILE DATA  EXEC  SIZE
+  FILENAME TYPE TYPE  ADDR /LOAD
+  MC10PROG BAS  BIN           58 
+  MC10EXEC M/L  BIN  17920 17920 
+  MC10SCRN M/L  BIN  <MC10 SCRN> 
+  MC10ARRY VAR  BIN           55 
+  COCOPROG BAS  BIN  <COCO PROG> 
+  ASCIPROG BAS  ASC  <COCO PROG> 
+  ASCIFILE DAT  ASC  <COCO FILE> 
+  COCOEXEC M/L  BIN  10240*10240*
+  COCOSCRN M/L  BIN  <COCO SCRN> 
+
+  Filename:   The name of the file as used with an MC-10 CLOAD, CLOAD*,
               CLOADM, CSAVE, or CSAVE* statement, or a Color Computer
               CLOAD, CLOADM, CSAVE, CSAVEM, or OPEN statement.
   
   File Type:  The file type, which may be one of the following:
-      
+
               BAS - MC-10 or Color Computer BASIC program. 
                     
-              DAT - Color Computer data file, created by the OPEN 
-                    statement.
+              DAT - Color Computer data file, created by an OPEN "O",-1,... 
+                    statement. 
                     
               M/L - MC-10 or Color Computer Machine language program.
                     
               VAR - MC-10 data file, created using the CSAVE* statement.
                     
-              ??? - Non-standard or custom file type. These are created
-                    through some method other than a BASIC statement.
- 
   Data Type:  The format of the data stored in the file.
   
               ASC - The file contains ASCII text. This could be a Color
@@ -71,7 +82,10 @@ The directory listing is in the following format
                     recognize ASCII files. Although the MC-10 might
                     CLOAD a BASIC program saved as ASCII without reporting
                     an error, the result will be unusable.
-                                  
+                                 
+                    This is also used for non-standard file types, in which
+                    case an asterisk is printed directly to the right.
+                                 
               BIN - The file contains Binary data. This could be an M/L
                     file, a VAR file, or a BAS file saved using the 
                     CSAVE "filename" command. Although the MC-10 and
@@ -79,13 +93,48 @@ The directory listing is in the following format
                     written for the other, the program will not run or
                     list correctly, unless the tokens are converted.
               
-  Start Addr: For M/L files, the program execution start address.
+  Exec Addr:  For M/L files, the program execution address. 
 
   Size/Addr:  For BAS and VAR files, the size of the file data in bytes.
               For M/L files, the load address of the program.
               
-              If a Color Computer file is detected, the text *COCO FILE*
+              If a Color Computer file is detected, the text <COCO FILE>
               will be displayed in the last two columns. 
+
+              If the file type is M/L, the last two columns will contain 
+              <MC10 SCRN> if the load address is 16384 and file size is
+              512, or <COCO SCRN> if the load address is 1024. Otherwise, 
+              an asterisk will appear to the left of either address if it 
+              is outside of the MC-10's available memory.
+
+In Raw mode, the directory is printed as follows:
+
+  FILENAME FT DT GF EXEC LOAD
+  MC10PROG 00 00 00 4C00 003A
+  MC10EXEC 02 00 00 4600 4600
+  MC10SCRN 02 00 00 0000 4000
+  MC10ARRY 04 00 00 4C00 0037
+  COCOPROG 00 00 00 0000 0000
+  ASCIPROG 00 FF FF 4F20 4241
+  ASCIFILE 01 FF FF 4F20 4241
+  COCOEXEC 02 00 00 2800 2800
+  COCOSCRN 02 00 00 0000 0400
+
+  FT - File Type: 00 for a Basic program, 01 for a CoCo data file, 
+       02 for a machine language program, or 04 for an MC-10 data file.
+
+  DT - Data Type: 00 for a binary file, or FF for an ASCII file.
+
+  GF - Gap Flag: 00 if there areno gaps between file blocks, or 
+       FF if there is a leader between each file block.
+       
+  EXEC - The execution address as a four digit hexadecimal number.
+
+  LOAD - The load address/file size as a four digit hexadecimal number.
+
+Non-standard and custom headers:
+
+  
 
 Stopping the Program
 
@@ -100,34 +149,31 @@ pressing ENTER.
 
 Technical Information
 
-The Cassette Routines use the following memory locations
+When SKIPF reads a file header, it stores it in the file header buffer,
+which contains the following fields.
 
-   Address     Decimal  Offset  Name    Description
-  4257-425E  16983-16990        FNAM    File Name 
-  425F-426D  16691-17005        HEADER  Cassette Header Buffer
+ Offset   Address     Decimal    Name    Description
+    0    425F-4266     16991     FNAME   File Name 
+    8      4267        16999     FTYPE   File Type 
+    9      4268        17000     DTYPE   Data Type 
+   10      4269        17001     GAPFLG  Gap Flag  
+   11    426A-426B  17002-17003  XOFS    Exec Offset
+   13    426C-426D  17004-17005  LAL     Load Address
 
-The cassette header buffer is written to tape on a CSAVE or CSAVE*, and
-read from tape on a CLOAD, CLOAD*, or CLOADM. Tge cassette header 
-contains the following fields:
+File Types are 0 for a Basic program (BAS), 1 for a data file (DAT),
+2 for a machine language program (M/L), and 4 for an array file (VAR).
 
-   Address     Decimal  Offset  Name    Description
-  425F-4266     16991      0    FNAME   File Name (padded with spaces)
-    4267        16999      8    FTYPE   File Type (0=BAS, 1=DAT, 2=M/L, 4=VAR)
-    4268        17000      9    DTYPE   Data Type (0=BIN, 255=ASC)
-    4269        17001     10    GAPFLG  Gap Flag  (0=No Gaps, 255=Gaps)
-  426A-426B  17002-17003  11    XOFS    Machine Language Start Address
-                                        Contains 0 for other MC-10 file types.
-  426C-426D  17004-17005  13    LAL     Machine Language Load Address
-                                        File length for other MC-10 file types.
+Data Types are 0 for a binary file and 255 for an ASCII file.
 
-When writing a header, the MC-10 pads FNAME with spaces and sets FTYPE to 0 
-for CSAVE, or 4 for CSAVE*. DTYPE and GAPFLG are always set to 0, and LAL 
-is set to the length of data being written to the tape. XOFS is not 
-explicitly set, so whatever bytes it contains at the time will be written
-to the cassette. This will usually be 0, since at power up, all bytes of 
-the header are set to 0, but may change anytime a CLOAD or or SKIPF command
-is run.
+Gap Flag is either 0 for no gaps between blocks or 255 for a leader
+between each block.
 
-When reading a header, the MC-10 checks compares FNAME against FNAM, if FNAM
-is populated, and verifies that FTYPE is 0 for CLOAD, 2 for CLOADM, or 4 for
-CLOAD*. The contents of DTYPE are ignored. 
+If any of these fields contain a value not listed, the header and or
+file were not created by a Basic statement.
+ 
+Exec Offset is the execution address for machine language programs. 
+For all other file types it will be an unpredictable value.
+
+Load Address is the starting address for machine language programs.
+For MC-10 Basic programs and array files it is the file length. For 
+all other file types it will be an unpredictable value.
