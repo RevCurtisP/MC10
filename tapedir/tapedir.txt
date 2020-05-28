@@ -4,6 +4,11 @@ This program reads all the files saved on a cassette and lists them
 on the screen or a printer. It should recognize all standard MC-10 and 
 Color Computer files, however, it will only run on an MC-10. 
 
+Note: This program has not been tested on a real MC-10. It works as
+expected on Virtual Aquarius. It should work on a real MC-10 when
+listing to screen, but I suspect that the cassette and printer ports
+may not interact as expected. 
+
 Loading the Program
 
 On a real MC-10, insert the cassette, type CLOAD "TAPEDIR" and press
@@ -22,7 +27,6 @@ beginning, if needed. Type RUN and press ENTER. The screen will show
   
 Press S or P to select the output device. The screen will then show
   
-  
   (F)ORMATTED OR (R)AW
   
 Press F or R to select the output format. Finally, the screen will 
@@ -38,6 +42,10 @@ As the cassette plays, the program will read the header of each file
 and print it to the screen or printer. If printer output out was 
 selected the screen will ahow FOUND and the file name for each file
 found.
+
+When printing to screen, the program will pause each time the screen 
+fills. When running on a real MC-10, the tape should be paused while
+printing is paused.
 
 Program Output
 
@@ -73,6 +81,9 @@ In Formatted mode, the directory is printed as follows:
               M/L - MC-10 or Color Computer Machine language program.
                     
               VAR - MC-10 data file, created using the CSAVE* statement.
+
+              *** - The file header contains an non-standard or illegal
+                    file type. See Technical Information, below.
                     
   Data Type:  The format of the data stored in the file.
   
@@ -93,6 +104,10 @@ In Formatted mode, the directory is printed as follows:
                     written for the other, the program will not run or
                     list correctly, unless the tokens are converted.
               
+              *** - The file header contains an non-standard or illegal
+                    data type. See Technical Information, below.
+
+
   Exec Addr:  For M/L files, the program execution address. 
 
   Size/Addr:  For BAS and VAR files, the size of the file data in bytes.
