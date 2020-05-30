@@ -14,6 +14,7 @@
 ; mapping_64.txt - Mapping the Commodore 64
 ;   https://www.commodore.ca/manuals/funet/cbm/c64/manuals/mapping-c64.txt.gz
 ; color-basic-unravelled.pdf - Color Basic Unraveled II
+; color-basic-unravelled.pdf - Color Basic Unraveled II
 ;   http://techheap.packetizer.com/computers/coco/unravelled_series/color-basic-unravelled.pdf
 ; mbasic.zip - Microsoft Basic-80 5.2 Source
 ;   https://winworldpc.com/download/c2bfc380-c2b2-c2b4-7d00-11c3a7c29d25
@@ -60,7 +61,7 @@ COUNT   equ     $82 ;Index into Text Input Buffer/Number of Array Subscripts
 DIMFLG  equ     $83 ; Array Variable Flags
 VALTYP  equ     $84 ;vartype flag
 ram85   equ     $85 ;data token flag
-SUBFLG   equ     $86
+SUBFLG  equ     $86
 ram87   equ     $87 ;READ cmd status flag
 TANSGN  equ     $88 ;Used to Determin Sign of Tangent
 DOMASK  equ     $88 ;Mask Used by Relational Operations
@@ -143,12 +144,12 @@ TXTPTR  equ     $F4 ; Pointer to BASIC character
 
 SCREEN  equ     $4000 ; start of screen mem
 TBL41FD equ     $41FD ; start clearing.
-USRPOK  equ     $4215 ; JMP Instruction for USR()
+USR     equ     $4215 ; JMP Instruction for USR()
 USRADD  equ     $4216 ; Address of USR Routine {Mapping the C64}
 RNDX    equ     $4218 ; RND Function Seed Value
 ram421C equ     $421C ; upcase flag
-KBDELAY equ     $421D ; keyboard debounce delay $045E
-ram421F equ     $421F ; default EXEC address    $EC2E
+KCOUNT  equ     $421D ; keyboard debounce delay $045E
+EXEADR  equ     $421F ; default EXEC address    $EC2E
 ram4221 equ     $4221
 PBDELAY equ     $4223 ; printer baud rate  $0080
 CRDELAY equ     $4225 ; cr. delay count    $0001
@@ -173,22 +174,26 @@ ram4252 equ     $4252
 ram4253 equ     $4253
 ram4254 equ     $4254 ; random number store 1
 ram4255 equ     $4255 ; random number store 2
-FNAMLEN equ     $4256 ; file name length
-TBL4257 equ     $4257 ; SKIP/LOAD file name
-TBL425F equ     $425F ; TAPE file name block
-FILTYPE equ     $4267 ; file type flag
-EXECOFS equ     $426A ; EXEC address offset
-LOADADR equ     $426C ; LOAD address
+FNLEN   equ     $4256 ; File Name Length
+FNAM    equ     $4257 ; Cassette File Name Buffer {CBU}
+CASBUF  equ     $425F ; TAPE file name block
+FNAME   equ     $425F
+FTYPE   equ     $4267 ;File Type 0=Basic, 4=Variable
+DTYPE   equ     $4268 ;Data Type 0=Binary
+GAPFLG  equ     $4269 ;Gap Between Blocks Flag: 0=No
+XOFS    equ     $426A ; EXEC address offset
+LAL     equ     $426C ; LOAD address
 ram426E equ     $426E ; NEW command status flag
-ram426F equ     $426F
-ram4271 equ     $4271
-ram4273 equ     $4273
+SAL     equ     $426F ;Start Address for Load/Save
+EAL     equ     $4271 ;End Address for Load/Save
+SKPFLG  equ     $4273
 ram4274 equ     $4274
-BLKTYPE equ     $4275 ; cass block type flag
-BLKLEN  equ     $4276 ; cass block length
-BUFFADR equ     $4278 ; cass buffer address
-CHKSUM  equ     $427A ; cass sumcheck
-LOADSTS equ     $427B ; cass load status flag
+BLKTYP  equ     $4275 ;Cassette Block Type: 0=Header, 1=Data, $FF=EOF
+BLKLEN  equ     $4276 ;Cassette Block Length
+;               $4277 ;Unused
+CBUFAD  equ     $4278 ;Cassette Buffer Address
+CCKSUM  equ     $427A ;Cassette Block Checksum
+LOADSTS equ     $427B ; Cassette load status flag
 BITCNTR equ     $427C ; cass byte load bit counter
 DURCNTR equ     $427D ; tone duration counter
 ram427E equ     $427E ; cass polarity flag
@@ -228,7 +233,7 @@ ioBFFF  equ     $BFFF
 FUNDSP  FDB     SGN       ; $F2BA  SGN
         FDB     INT       ; $F335  INT
         FDB     ABS       ; $F2D5  ABS
-        FDB     USRPOK       ; $4215  USR
+        FDB     USR       ; $4215  USR
         FDB     F_RND       ; $F62A  RND
         FDB     F_SQR       ; $F54D  SQR
         FDB     F_LOG       ; $F0B9  LOG
@@ -366,15 +371,15 @@ STMDSP  FDB     FOR         ; $E4C4  FOR
         FDB     LIST        ; $E40D  LIST
         FDB     C_CLEAR       ; $E5B8  CLEAR
         FDB     SCRATH         ; $E3CD  NEW
-        FDB     C_CLOAD       ; $FD5C  CLOAD
-        FDB     C_CSAVE       ; $FC3B  CSAVE
+        FDB     CLOAD       ; $FD5C  CLOAD
+        FDB     CSAVE         ; $FC3B  CSAVE
         FDB     LLIST       ; $E40B  LLIST
         FDB     LPRINT      ; $E71C  LPRINT
         FDB     C_SET         ; $FB25  SET
         FDB     C_RESET       ; $FB55  RESET
         FDB     C_CLS         ; $FBBF  CLS
         FDB     C_SOUND       ; $FFA5  SOUND
-        FDB     C_EXEC        ; $FC04  EXEC
+        FDB     EXEC        ; $FC04  EXEC
         FDB     C_SKIPF       ; $FE2F  SKIPF
 
 ;$E18A  ASCII Text of TXTTAB Error Messages
@@ -988,7 +993,7 @@ C_CLEAR
         JSRE    CHRGOT 
         BEQ     LBLE5DA
         JSR     CHKCOM  ; get ','
-        JSR     LBLEF4C
+        JSR     INTIDX
         LDX     FACMO
         DEX    
         STX     FACMO
@@ -1282,7 +1287,7 @@ LBLE7B9 LDAA    #$20
 
         FCB     $CB        ;CPX #
 LBLE7BC LDAA    #$3F
-LBLE7BE JMP     LBLF9C6  ;A->SCN
+LBLE7BE JMP     OUTCH  ;A->SCN
 
 
 TBLE7C1 FCB     $3F,$52,$45,$44,$4F,$0D,$00     ;?REDO
@@ -1452,9 +1457,10 @@ LBLE8FC LDAB    #$12
         BSR     LBLE8C2
 ;$E90C  Evaluate a Numeric Expression
 FRMNUM  BSR     FRMEVL
-;$E90E
-CHKNUM  TST     $0D,X     
-CHKSTR  ;SEC  E-expect numeric? F-expect string?
+;$E90E  ;Require Numeric Expression
+CHKNUM  FCB     $6D           ;TST     $0D,X     
+;$E90F  ;Require String Expression
+CHKSTR  SEC  E-expect numeric? F-expect string?
 LBLE910 ROR     VALTYP   ;vartype flag
         BVC     LBLE8AA   ;RTS
         LDAB    #$18      ;?TM error
@@ -1850,19 +1856,20 @@ TBLEBB7 FCB     $00
         FCB     $00
         FCB     $00
 
-;$EBBA  Parse Floating Point Subscript
+;$EBBA  Read and Convert Floating Point Number to Positive Integer
+;Returns: X=Parsed Unteger
 INTIDX  JSRE    CHRGET 
 LBLEBBD JSR     FRMNUM
 LBLEBC0 JSR     CHKNUM     ;expect numeric
         LDAA    FACSGN
-        BMI     FCERROR  ;?FC error
+        BMI     FCERR  ;?FC error
 LBLEBC7 JSR     CHKNUM     ;expect numeric
         LDAA    FAC
         CMPA    #$90
         BLO     LBLEBD8
         LDX     #TBLEBB5  ; -32768.0
         JSR     LBLF2D9   ; compare [X] with C9-E.
-        BNE     FCERROR ;?FC error
+        BNE     FCERR ;?FC error
 LBLEBD8 JSR     QINT   ; C9-x -> integer
         LDD     FACMO
 LBLEBDD RTS     
@@ -1909,17 +1916,20 @@ LBLEC1B LDAB    #$12    ;?DD error
         TSTA    
         BEQ     LBLEBDD ; RTS - if found and 0 on stack
         LDAA    DIMFLG
-        BNE     LBLEC30 ;write error if in a DIM command on a previously alloc'd var.
+        BNE     ERRGO3 ;write error if in a DIM command on a previously alloc'd var.
         LDAB    COUNT
         CMPB    4,X
         BEQ     LBLEC87
-LBLEC2B LDAB    #$10    ;?BS error
-LBLEC2D CPX     #$C608          
-;FCERROR LDAB  #$08 ?FC error
-LBLEC30 JMP     ERROR  
+;EC2B   Print Bad Subsript Error Message
+BSERR   LDAB    #$10    ;?BS error
+        FCB     $CB        ;CPX #
+$EC2D   Print Runction Call Error Message
+FCERR   LDAB  #$08 ?FC error
+ERRGO3  JMP     ERROR  
+
 LBLEC33 PULA    
         TSTA    
-        BEQ     FCERROR  ;?FC error
+        BEQ     FCERR  ;?FC error
         LDD     #$0005
         STD     ramDE
         LDD     VARNAM
@@ -2006,7 +2016,7 @@ LBLECC3 ASLD
 LBLECD2 DEC     FPTMPS  
         BNE     LBLECC3
         RTS     
-LBLECD8 JMP     LBLEC2B
+LBLECD8 JMP     BSERR
 
 ;ECDA   MEM function
 MEM     STS     INDEX
@@ -2345,7 +2355,7 @@ LBLEEF2 JSR     CHKCLS; get ')'
         RTS     
 
 
-LBLEF07 JMP     FCERROR  ;?FC error
+LBLEF07 JMP     FCERR  ;?FC error
 LBLEF0A JSRE    CHRGET 
 ;get arg -> B
 LBLEF0D JSR     FRMNUM
@@ -2377,19 +2387,21 @@ ST2TXT LDX     ramDE
         STX     TXTPTR
         RTS     
 
-LBLEF43 BSR     LBLEF4C
+LBLEF43 BSR     INTIDX
         STX     LINNUM
 LBLEF47 JSR     CHKCOM ;get ','
         BRA     LBLEF0D   ;get arg into B
 
-                ; get 0-65535 into X
-LBLEF4C JSR     FRMNUM   ;get numeric var.
+;$EF4C  Read Positive Integer into X
+INTIDX JSR     FRMNUM   ;get numeric var.
+
+;$EF4F  Convert FAC to Positive Integer
 LBLEF4F LDAA    FACSGN
-        BMI     LBLEF07   ;?FC error
+        BMI     LBLEF07       ;?FC error
         LDAA    FAC
         CMPA    #$90
-        BHI     LBLEF07   ;?FC error
-        JSR     QINT   ;C9->integer
+        BHI     LBLEF07       ;?FC error
+        JSR     QINT          ;C9->integer
         LDX     FACMO
         RTS
 
@@ -2577,7 +2589,7 @@ TBLF0B4 FCB     $80,$31,$72,$17,$F8  ;LOG(2.0)
 F_LOG           ; --- LOG function ---
         JSR     SIGN ;Test C9-E
         BGT     LBLF0C1
-        JMP     FCERROR  ;?FC error
+        JMP     FCERR  ;?FC error
 LBLF0C1 LDX     #TBLF0A5
         LDAA    FAC
         SUBA    #$80
@@ -3453,11 +3465,11 @@ LBLF758 INX
 
         LDX     #TBLF7CF    ;Init 6803 RAM
         LDD     #$00EB
-        BSR     LBLF7AD
+        BSR     CPYTBL
 
         LDX     #TBLF7DE    ;Init external RAM
         LDD     #$4200
-        BSR     LBLF7AD
+        BSR     CPYTBL
 
         LDAA    #$39        ;==RTS
         LDX     #X_INCHAR    ;4285 to 42AE set to RTS
@@ -3482,12 +3494,15 @@ LBLF78A STAA    ,X
 
 LBLF7AA JMP     READY 
 
-                ;Copy block of memory from [X+1] to [D], length at [X]
-LBLF7AD STD     FPTMPS       ;Save destination
+;#F7AD          ;Copy block of memory from [X+1] to [D], length at [X]
+CPYTBL  STD     FPTMPS       ;Save destination
         LDAB    ,X          ;Get length
-LBLF7B1 INX                 ;Inc start
-                ;Copy block of memory from [X] to [$00BF], length in B
-LBLF7B2 LDAA    ,X          ;Get byte
+
+;$F7B2
+CPYMEN  INX                 ;Inc start
+
+;$F7B2  Copy block of memory from [X] to [$00BF], length in B
+CPYMEM  LDAA    ,X          ;Get byte
         STX     TENEXP       ;Save source
         LDX     FPTMPS       ;Get dest
         STAA    ,X          ;Put byte
@@ -3495,7 +3510,7 @@ LBLF7B2 LDAA    ,X          ;Get byte
         STX     FPTMPS       ;Save dest
         LDX     TENEXP       ;Get source
         DECB                ;Dec count
-        BNE     LBLF7B1     ;More...
+        BNE     CPYMEN     ;More...
         RTS
 
 ;DEFAULT RESET WARM-BOOT (F7C3)
@@ -3536,7 +3551,7 @@ TBLF7DE FCB     49          ;49 bytes to copy
         RTI     
         FCB     $00
         FCB     $00
-        JMP     FCERROR  ;?FC error
+        JMP     FCERR  ;?FC error
         FCB     $4F,$C7,$52,$59,$FF,$04,$5E,$EC,$2E,$F7,$C3,$00,$76,$00,$01,$10
         FCB     $70,$84,$00,$01,$15,$1A,$0B,$00,$80
         
@@ -3549,7 +3564,7 @@ MCROSFT FCB     $4D,$49,$43,$52,$4F,$53,$4F,$46,$54,$0D,$00                     
 
                 ; --- Flash cursor ---
 FLASH   DEC     FLSHCNT     ;cursor flash delay counter
-        BNE     LBLF85E
+        BNE     FDELAY
         LDAA    CRSRCLR     ;cursor color
         EORA    #$0F
         STAA    CRSRCLR
@@ -3562,9 +3577,12 @@ FLASH   DEC     FLSHCNT     ;cursor flash delay counter
         LDAB    #$58        ;flash color longer than black.
 LBLF85B STAB    FLSHCNT
 
-LBLF85E LDX     #$03FA
-LBLF861 DEX    
-        BNE     LBLF861
+;$F85E  Delay ? Cycles for Cursor Flash
+FDELAY  LDX     #$03FA
+
+;$F861  Delay X*? Cycles
+DELAY   DEX    
+        BNE     DELAY
         RTS
 
 
@@ -3600,7 +3618,7 @@ SCANKBD JSR     LBL42A9                 ; Keyscan command extension
 LBLF892 STAA    BRKFLAG
         TSTB    
         BEQ     LBLF89E
-        BSR     LBLF8DC   ; delay
+        BSR     KDELAY   ; delay
         BSR     LBLF8D2   ; still a break?
         BNE     LBLF8C8   ; return BREAK code 03
 LBLF89E LDX     #SCANBUF
@@ -3622,7 +3640,7 @@ LBLF8A6 ROLB
         SEC     
         BEQ     LBLF8A6
         PSHA    
-        BSR     LBLF8DC
+        BSR     KDELAY
         BSR     LBLF8E4
         CMPA    ,X
         PULA    
@@ -3644,8 +3662,11 @@ LBLF8D2 LDAA    PORT2       ; A=0x00=found
         BEQ     LBLF8DB
         LDAA    #$FF
 LBLF8DB RTS     
-LBLF8DC LDX     KBDELAY ;keyboard debounce delay
-        JMP     LBLF861
+
+;$F8DC  Delay for Keybounce
+KDELAY  LDX     KCOUNT        ;Get Keyboard Debounce Delay
+        JMP     DELAY         ;Delay and Return
+
 LBLF8E2 STAB    PORT1
 LBLF8E4 LDAA    ioBFFF
         ORAA    #$C0
@@ -3725,13 +3746,13 @@ TBLF9AB FCB     $B6,$89,$80,$82,$87,$8D,$86,$85     ;--------
         FCB     $50,$8F,$8C,$88,$8B,$55,$81,$8E     ;P----U--
         FCB     $83,$8A,$84                         ;---
 
-
-LBLF9C6 JSR     LBL4288         ; --- Write char to screen ---
+;$F9CE  Write Character to Output Device
+OUTCH   JSR     LBL4288
         PSHX    
         PSHB    
         PSHA    
         LDAB    CHANNEL     ;Ouput device #
-        BEQ     LBLFA1B     ;Video...
+        BEQ     OUTSCR     ;Video...
 
 
                             ;Assume printer
@@ -3778,20 +3799,20 @@ LBLFA0C STAB    PORT2       ;Printer bit output
 LBLFA10 LDX     PBDELAY
         BRA     LBLFA18
 LBLFA15 LDX     CRDELAY
-LBLFA18 JMP     LBLF861
+LBLFA18 JMP     DELAY
 
-; A->SCN
-LBLFA1B LDX     CRSRADR
+;FA1B   Write Character to Screen
+OUTSCR  LDX     CRSRADR
         CMPA    #$08   ; backspace
-        BNE     LBLFA2E
+        BNE     NOTBS
         CPX     #$4000
         BEQ     LBLFA77
         LDAA    #$60
         DEX    
         STAA    ,X
         BRA     LBLFA5C
-LBLFA2E CMPA    #$0D   ; carriage return
-        BNE     LBLFA46
+NOTBS   CMPA    #$0D   ; carriage return
+        BNE     NOTCR
         LDX     CRSRADR
 LBLFA35 LDAA    #$60
         STAA    ,X
@@ -3801,7 +3822,7 @@ LBLFA35 LDAA    #$60
         BITB    #$1F
         BNE     LBLFA35
         BRA     LBLFA5C
-LBLFA46 CMPA    #$20
+NOTCR   CMPA    #$20
         BLO     LBLFA77
         TSTA    
         BMI     LBLFA59
@@ -3894,7 +3915,7 @@ LBLFAED CMPA    #$15      ;L. DEL
 LBLFAF1 DECB              ;keep backspacing until stop
         BEQ     LBLFAA7
         LDAA    #$08
-        JSR     LBLF9C6   ;A->SCN
+        JSR     OUTCH   ;A->SCN
         BRA     LBLFAF1
 LBLFAFB CMPA    #$03      ;break
         SEC     
@@ -3919,7 +3940,7 @@ LBLFB1A CMPB    #$80      ;don't go more than 128 chars.
         STAA    ,X        ;store char into command line buffer
         INX    
         INCB    
-LBLFB22 JMP     LBLF9C6 ;A->SCN
+LBLFB22 JMP     OUTCH ;A->SCN
 
 
                 ; --- SET command ---
@@ -3965,7 +3986,7 @@ C_RESET
         RTS     
 
 
-LBLFB67 JMP     FCERROR  ; ?FC error
+LBLFB67 JMP     FCERR  ; ?FC error
 
 LBLFB6A JSR     CHKOPN  ; get '('
 LBLFB6D JSR     LBLEF0D    ; get x position
@@ -4065,12 +4086,12 @@ LBLFBFF STAA    ramD0
         JMP     LBLEE9D
 
 
-                ; --- EXEC function ---        
-C_EXEC
-        BEQ     LBLFC0C
-        JSR     LBLEF4C  ; Get address to X
-        STX     ram421F
-LBLFC0C LDX     ram421F
+;$FC04  EXEC Command
+
+EXEC    BEQ     LBLFC0C  ;If Not End of Statement
+        JSR     INTIDX  ; Get address to X
+        STX     EXEADR
+LBLFC0C LDX     EXEADR
         JMP     ,X
 
 
@@ -4085,184 +4106,195 @@ F_VARPTR
         LDD     TEMPADR
         CPX     ram99
         BEQ     LBLFC26
-        JMP     FCERROR  ; ?FC error
+        JMP     FCERR  ; ?FC error
 LBLFC26 JMP     LBLECE3 ; return D
 
                 ; --- PRINT @expression  ---
 LBLFC29 JSR     INTIDX
         SUBD    #$01FF
         BLS     LBLFC34
-        JMP     FCERROR  ; ?FC error
+        JMP     FCERR  ; ?FC error
 LBLFC34 ADDD    #$41FF
         STD     CRSRADR
         RTS
 
-                ; --- CSAVE command ---
-C_CSAVE
-        LDX     TXTTAB
-        STX     ram426F ; start
-        LDX     VARTAB 
-        STX     ram4271 ; end
-        CLRB    
-        CMPA    #$A9   ; CSAVE*
-        BNE     LBLFC4F
-        JSR     LBLFDDB
-        LDAB    #$04
-LBLFC4F STAB    FILTYPE  ;file type flag
-        LDD     ram4271  ; end
-        SUBD    ram426F  ; start
-        STD     LOADADR  ;LOAD address
-        BSR     LBLFC8B
-        LDX     ram426F  ; start
-LBLFC60 STX     BUFFADR  ;cass buffer address
-        LDAA    #$FF
-        STAA    BLKLEN   ;cass block length
-        LDD     ram4271
-        SUBD    BUFFADR  ;cass buffer address
+;$FC3B  CSAVE command
+CSAVE:  LDX     TXTTAB        ;Set Start Address for SAVE
+        STX     SAL           ;to Beginning of Program
+        LDX     VARTAB        ;Set End Address for SAVE
+        STX     EAL ; end     ;to End of Program
+        CLRB                  ;Set File Type to BAS
+        CMPA    #$A9          ;If CSAVE*
+        BNE     CSAVE1       
+        JSR     CSAVEV        ;Set SAL and EAL to Array Start amd End
+        LDAB    #$04          ;and File Type to VAR
+CSAVE1  STAB    FTYPE         ;Store File Type 
+        LDD     EAL           ;Calculate File Length
+        SUBD    SAL           ;and
+        STD     LAL           ;Store as LOAD Address
+        BSR     HWRITE
+        LDX     SAL           ;Get Save Start Address
+
+;FC60   ;Write File Data to Tape
+CSAVED  STX     CBUFAD        ;Set Cassette Buffer Address
+        LDAA    #$FF          ;Set Cassette Block Length
+        STAA    BLKLEN        ;to 255
+        LDD     EAL           ;Calculate File Length
+        SUBD    CBUFAD
         BLS     LBLFC7E
         TSTA    
         BNE     LBLFC7A
         CMPB    #$FF
         BEQ     LBLFC7A
-        STAB    BLKLEN   ;cass block length
-LBLFC7A BSR     LBLFCC0  ;write cassette block
-        BRA     LBLFC60
-LBLFC7E NEG     BLKTYPE  ;cass block type flag
-        CLR     BLKLEN   ;cass block length
-        BSR     LBLFCC0  ;write cassette block
+        STAB    BLKLEN        ;cass block length
+LBLFC7A BSR     BLKOUT        ;write cassette block
+        BRA     CSAVED     
+LBLFC7E NEG     BLKTYP        ; cass block type flag
+        CLR     BLKLEN        ;cass block length
+        BSR     BLKOUT        ;write cassette block
 LBLFC86 LDAA    #$01
         STAA    PORT2
         RTS
 
-
-LBLFC8B JSR     LBLFD29
-        LDX     #TBL425F ;tape filename block
-        STX     BUFFADR  ;cass buffer address
+;FC8B   Parse File Name and Write Header to Cassette
+HWRITE  JSR     CHKFN
+        LDX     #CASBUF       ;tape filename block
+        STX     CBUFAD          ;cass buffer address
         STX     FPTMPS  
-        CLR     $09,X    ;ram4268
-        CLR     $0A,X    ;ram4269
-        LDX     #TBL4257 ;skip/load filename
+        CLR     $09,X         ;Set DTYPE t0 0
+        CLR     $0A,X         ;Set GAPFLG to 0
+
+;       Copy File Name to Cassette Buffer and Write to Cassette
+HDROUT  LDX     #FNAME        ;skip/load filename
         LDAB    #$08
-        JSR     LBLF7B2  ;Copy block of memory from [X] to [$00BF], length in B
-        CLR     BLKTYPE  ;cass block type flag
+        JSR     CPYMEM        ;Copy B bytes from [X] to [$BF]
+        CLR     BLKTYP        ;Set Cassette Block Type to Header
         LDAA    #$0F
-        STAA    BLKLEN   ;cass block length
-        BSR     LBLFCB7  ;write cassette leader
-        BSR     LBLFCC0  ;write cassette block
-        INC     BLKTYPE  ;cass block type flag
+        STAA    BLKLEN        ;cass block length
+        BSR     WRLDR        ;write cassette leader
+        BSR     BLKOUT        ;write cassette block
+        INC     BLKTYP        ;cass block type flag
         LDX     #$0000
-        JSR     LBLF861
+        JSR     DELAY
 
 
-                ;Write cassette leader
-LBLFCB7 LDX     LDRCNT   ; numer of $55's in leader
-LBLFCBA BSR     LBLFD01
+;$FCB7  Write Cassette Leader - (LDRCNT) SYNC Characters
+WRLDR   LDX     LDRCNT   ; numer of $55's in leader
+
+;$FCBA  Write X SYNC Characters to Cassette
+WRSYN   BSR     SYNOUT
         DEX    
-        BNE     LBLFCBA
+        BNE     WRSYN
         RTS
 
-
-LBLFCC0 NOP      ;Write cassette block
+;$FCC0  Write cassette block
+BLKOUT  NOP                   ;
         SEI     
-        LDAB    BLKLEN   ;cass block length
-        STAB    LOADSTS  ;cass load status flag
-        LDAA    BLKLEN   ;cass block length
-        BEQ     LBLFCD6
-        LDX     BUFFADR  ;cass buffer address
-LBLFCD0 ADDA    ,X
+        LDAB    BLKLEN        ;cass block length
+        STAB    LOADSTS       ;cass load status flag
+        LDAA    BLKLEN        ;cass block length
+        BEQ     BLKOU2
+        LDX     CBUFAD        ;cass buffer address
+BLKOU1  ADDA    ,X
         INX    
         DECB    
-        BNE     LBLFCD0
-LBLFCD6 ADDA    BLKTYPE  ;cass block type flag
-        STAA    CHKSUM   ;cass sumcheck
-        LDX     BUFFADR  ;cass buffer address
-        BSR     LBLFD01
+        BNE     BLKOU1
+BLKOU2  ADDA    BLKTYP        ;cass block type flag
+        STAA    CCKSUM        ;cass sumcheck
+        LDX     CBUFAD        ;cass buffer address
+        BSR     SYNOUT
         LDAA    #$3C
-        BSR     LBLFD03
-        LDAA    BLKTYPE
-        BSR     LBLFD03
-        LDAA    BLKLEN   ;cass block length
-        BSR     LBLFD03
+        BSR     CASOUT
+        LDAA    BLKTYP
+        BSR     CASOUT
+        LDAA    BLKLEN        ;cass block length
+        BSR     CASOUT
         TSTA    
-        BEQ     LBLFCFC
-LBLFCF2 LDAA    ,X
+        BEQ     BLKOU4
+BLKOU3  LDAA    ,X
         INX    
-        BSR     LBLFD03
-        DEC     LOADSTS  ;cass load status flag
-        BNE     LBLFCF2
-LBLFCFC LDAA    CHKSUM   ;cass sumcheck
-        BSR     LBLFD03
-LBLFD01 LDAA    #$55
+        BSR     CASOUT
+        DEC     LOADSTS       ;cass load status flag
+        BNE     BLKOU3      
+BLKOU4  LDAA    CCKSUM        ;cass sumcheck
+        BSR     CASOUT
 
-                ;Write cassette char
-LBLFD03 PSHX    
-        PSHA    
-        PSHA    
-        LDAB    #$08
-LBLFD08 TSX     
-        LSR     ,X
-        LDX     #$0020
-        BLO     LBLFD13
-        LDX     #$0040
-LBLFD13 PSHX    
-        LDAA    #$01
+;$FD01  Write Sync Character to Tape
+SYNOUT  LDAA    #$55
+
+;$FD03  Write Character to Cassette
+CASOUT  PSHX                  ;Save Pointer to Byte
+        PSHA                  ;Save Character on Stack
+        PSHA                  ;Push onto Stack to be Rotated
+        LDAB    #$08          ;Writing 8 Bite
+
+;$FD08  Write Bits to Cassette 
+BTSOUT  TSX                   ;Set Index to Byte on Stack
+        LSR     ,X            ;Rotate High Bit Out
+        LDX     #$0020        ;Set Pulse Length for Zero
+        BLO     PLSOUT        ;If Bit was 1
+        LDX     #$0040        ;Set Pulse Length for One
+        
+;$FD13  Write Pulse to Cassette
+PLSOUT  PSHX                  ;Save Pulse Length
+        LDAA    #$01          ;Set Output High
         STAA    PORT2
-LBLFD18 DEX    
-        BNE     LBLFD18
+PLSOU1  DEX                   ;Count Down the Pulse Length
+        BNE     PLSOU1
         CLRA    
-        STAA    PORT2
-        PULX    
-LBLFD1F DEX    
-        BNE     LBLFD1F
-        DECB    
-        BNE     LBLFD08
+        STAA    PORT2         ;Set Output Low
+        PULX                  ;Restore Pulse Length
+PLSOU2  DEX                   ;and Count it Down
+        BNE     PLSOU2
+        DECB                  ;
+        BNE     BTSOUT        ;Write Next Bit
         PULA    
         PULA    
         PULX    
-LBLFD28 RTS
+PLSRTS  RTS
 
-
-LBLFD29 BSR     LBLFD33
+;$FD29  Require Filename
+CHKFN   BSR     GETFN         
         JSRE    CHRGOT 
-        BEQ     LBLFD28
-        JMP     SNERR;?SN ERROR
+        BEQ     PLSRTS
+        JMP     SNERR         ;?SN ERROR
 
-LBLFD33 LDX     #FNAMLEN      ; file name length
-        CLR     ,X
-        LDAA    #$20          ; pad filename with space chars
-LBLFD3A INX    
+;FD33   Get File Name
+GETFN   LDX     #FNLEN        
+        CLR     ,X            ;Set Filename Length to 0
+        LDAA    #$20          ;Fill Filename with Spaces
+PADFN   INX    
         STAA    ,X
-        CPX     #$425F    ;tape filename block
-        BNE     LBLFD3A
-        JSRE    CHRGOT       ; load input char
-        BEQ     LBLFD28      ; return if no filename
-        JSR     FRMEVL      ; evaulate arg
-        JSR     FRESTR      ; get string?
-        STAB    FNAMLEN      ; length of string to filename len.
-        BEQ     LBLFD28 ; RTS
-        PSHB    
-        LDD     #$4257  ;skip/load filename
+        CPX     #$425F        ;tape filename block
+        BNE     PADFN
+        JSRE    CHRGOT        ; load input char
+        BEQ     PLSRTS        ; return if no filename
+        JSR     FRMEVL        ;Evaluate Expression
+        JSR     FRESTR        ;Check if it's String
+        STAB    FNLEN         ;Set Filename Length to String Length
+        BEQ     PLSRTS        ;If it's 0, Return
+        PSHB                  ;Save Filename Length
+        LDD     #$4257        ;skip/load filename
         STD     FPTMPS  
         PULB    
-        JMP     LBLF7B2  ;Copy block of memory from [X] to [$00BF], length in B
+        JMP     CPYMEM       ;Copy block of memory from [X] to [$00BF], length in B
 
-                ; --- CLOAD command ---
-C_CLOAD
-        CMPA    #$A9                    ; CLOAD*
-        BNE     LBLFD63
-        JMP     LBLFDB1
-LBLFD63 CMPA    #$4D                    ; CLOADM 
-        BNE     LBLFD6A
-        JMP     LBLFE06
-LBLFD6A CLRA           ; program data
+        ;CLOAD command
+CLOAD   CMPA    #$A9          ;If Token is CLOAD*
+        BNE     CLOAD1        
+        JMP     CLOADV        ;Execute CLOADV Routine
+CLOAD1  CMPA    #$4D          ;If Token is CLOADM 
+        BNE     CLOAD2        ;Execute CLOADM Routine
+        JMP     CLOADM        
+CLOAD2  CLRA                  ;File Type Program
         BSR     LBLFD8F
-        JSR     LBLE3CF  ; NEW command status flag
-        COM     ram426E  ; unset new command flag
-        LDD     LOADADR  ; LOAD address
+        JSR     LBLE3CF       ; NEW command status flag
+        COM     ram426E       ; unset new command flag
+        LDD     LAL           ; LOAD address
         ADDD    TXTTAB
-        JSR     GETSTD  ; see if D bytes fit on stack
-        LDX     TXTTAB
-LBLFD7D STX     BUFFADR  ; cass buffer address
+        JSR     GETSTD        ; see if D bytes fit on stack
+        LDX     TXTTAB      
+LBLFD7D STX     CBUFAD        ; cass buffer address
         BSR     LBLFDD0
         BPL     LBLFD7D
         STX     VARTAB 
@@ -4270,81 +4302,81 @@ LBLFD7D STX     BUFFADR  ; cass buffer address
         JSR     STROUT     ; Write string
         JMP     LBLE2EB    ; adjust next line pointers, and return to command mode
 
-LBLFD8F PSHA           ; A: 00=program 02=machine code 04=array data
+LBLFD8F PSHA                  ;Save File Type 00=program 02=machine code 04=array data
         BSR     LBLFDA2
-        PULA    
+        PULA                  ;Restore File Type
         TST     ram4274
-        BNE     LBLFDCF
-        CMPA    FILTYPE  ;File type flag
-        BEQ     LBLFDCF
-        LDAB    #$24     ;?FM error
-        JMP     ERROR    ;write error
+        BNE     CLORTS
+        CMPA    FTYPE         ;If File Type Doesn't Match
+        BEQ     CLORTS
+FMERR:  LDAB    #$24          ;  Issue ?FM error
+        JMP     ERROR
 
-LBLFDA2 BSR     LBLFD33
-        JSR     LBLFE37
+LBLFDA2 BSR     GETFN         ;Parse File Name
+        JSR     CREAD
         BNE     LBLFDAC  ;?IO error
         JMP     LBLFF4E  ;Read cassette leader
 
 LBLFDAC LDAB    #$22     ;?IO error
         JMP     ERROR  
 ;CLOAD*
-LBLFDB1 BSR     LBLFDDB
+CLOADV BSR     CSAVEV
         LDAA    #$04     ;array data
         BSR     LBLFD8F
-        LDD     ram4271  ;end
-        SUBD    ram426F  ;start
-        SUBD    LOADADR  ; LOAD address
+        LDD     EAL  ;end
+        SUBD    SAL  ;start
+        SUBD    LAL  ; LOAD address
         BHS     LBLFDC5
         JMP     OMERR ;?OM error
 
 
-LBLFDC5 LDX     ram426F
-LBLFDC8 STX     BUFFADR  ;cass buffer address
+LBLFDC5 LDX     SAL
+LBLFDC8 STX     CBUFAD  ;cass buffer address
         BSR     LBLFDD0
         BPL     LBLFDC8
-LBLFDCF RTS
+CLORTS RTS
 
 
-LBLFDD0 JSR     LBLFEB6 ;disable blocklength limit, enable writing, read block->X
-LBLFDD3 BNE     LBLFDAC   ; ?IO error
-        LDAA    BLKTYPE   ; Cass block type flag
-        BEQ     LBLFDAC   ; ?IO error
+LBLFDD0 JSR     BLKIN         ;disable blocklength limit, enable writing, read block->X
+LBLFDD3 BNE     LBLFDAC       ; ?IO error
+        LDAA    BLKTYP        ; Cass block type flag
+        BEQ     LBLFDAC       ; ?IO error
         RTS
 
-;CSAVE*
-LBLFDDB JSRE    CHRGET  ;get next char
+;FDDB   Set up for CSAVE* (Non-Canonical Label)
+CSAVEV  JSRE    CHRGET        ;Skip CSAVE* Tokn
         LDAB    #$01
-        STAB    SUBFLG
-        JSR     PTRGET ;get init/var
-        CLR     SUBFLG
-        JSR     CHKNUM  ;expect string
-        LDD     2,X
-        JSR     LBLE22D ;D+X->D,X
-        STX     ram4271
+        STAB    SUBFLG        ;Set Array Flag
+        JSR     PTRGET        ;Get Pointer to Variable 
+        CLR     SUBFLG        ;Clear Array Flag
+        JSR     CHKNUM        ;Parse Numeric Expression
+        LDD     2,X           ;
+        JSR     LBLE22D       ;D+X->D,X
+        STX     EAL           ;Store as End Address
         LDX     TEMPADR
         LDAB    4,X
         ASLB    
         ADDB    #$05
         ABX     
-        STX     ram426F
+        STX     SAL           ;Store as Save Addeess
         JSRE    CHRGOT 
-        BEQ     LBLFDCF
-        JMP     CHKCOM ; get ','
+        BEQ     CLORTS       Return
+        JMP     CHKCOM        ;Require Comma and Return
 
-;CLOADM 
-LBLFE06 JSRE    CHRGET     ; Get next input char
-        LDAA    #$02    ; machine code
+;$FE06  Load Machine Languag Program from Cassette
+CLOADM  JSRE    CHRGET     ; Get next input char
+        LDAA    #$02       ; machine code
         BSR     LBLFD8F
         LDX     #$0000
         JSRE    CHRGOT 
         BEQ     LBLFE1B
         JSR     CHKCOM ; get ','
-        JSR     LBLEF4C   ; get address offset to X
+        JSR     INTIDX   ; get address offset to X
 LBLFE1B STX     TEMPADR
-        LDD     EXECOFS   ;EXEC address offset
+        LDD     XOFS   ;EXEC address offset
         ADDD    TEMPADR
-        STD     ram421F   ;default EXEC address
-        LDD     LOADADR   ;LOAD address
+        STD     EXEADR   ;default EXEC address
+        LDD     LAL   ;LOAD address
         ADDD    TEMPADR
         PSHB    
         PSHA    
@@ -4358,7 +4390,8 @@ C_SKIPF
         BNE     LBLFDD3
         RTS     
 
-LBLFE37 LDAA    CURLIN
+;$FE37  Read File from Cassette
+CREAD   LDAA    CURLIN
         INCA    
         BNE     LBLFE46
         JSR     CLRSCRN+1    ;Clear screen
@@ -4366,18 +4399,18 @@ LBLFE37 LDAA    CURLIN
         BSR     LBLFE81
         JSR     LBLE7B9
 LBLFE46 BSR     LBLFEAA
-        ORAA    BLKTYPE  ; Cass block type flag
+        ORAA    BLKTYP  ; Cass block type flag
         BNE     LBLFE80
         CLRB    
         PSHB    
-LBLFE4F LDX     #TBL425F  ;tape filename block
+LBLFE4F LDX     #CASBUF  ;tape filename block
         ABX     
         LDAA    ,X
         LDX     CURLIN
         INX    
         BNE     LBLFE5C
         BSR     LBLFE81
-LBLFE5C LDX     #TBL4257  ;skip/load filename
+LBLFE5C LDX     #FNAME  ;skip/load filename
         ABX     
         SUBA    ,X
         TSX     
@@ -4389,11 +4422,11 @@ LBLFE5C LDX     #TBL4257  ;skip/load filename
         PULA    
         TSTA    
         BEQ     LBLFE7B
-        TST     FNAMLEN
+        TST     FNLEN
         BEQ     LBLFE7B
         BSR     LBLFE87
         BNE     LBLFE80
-        BRA     LBLFE37
+        BRA     CREAD
 LBLFE7B LDAA    #$46
         BSR     LBLFEA1
         CLRA    
@@ -4401,14 +4434,14 @@ LBLFE80 RTS
 
 
 LBLFE81 CLR     CHANNEL ;turn off printer
-        JMP     LBLF9C6 ;A->SCN
+        JMP     OUTCH ;A->SCN
 
 LBLFE87 JSR     LBLFF4E ;Read cassette leader
 LBLFE8A LDAA    #$FF    ;disable blocklength limit
         TAB             ;disable writing (B=$FF)
-        BSR     LBLFEB9
+        BSR     BLKRD
         BNE     LBLFE98
-        LDAA    BLKTYPE ;cass block type flag
+        LDAA    BLKTYP ;cass block type flag
         NEGA    
         BMI     LBLFE8A
         DECA    
@@ -4425,51 +4458,53 @@ LBLFEA1 LDAB    CURLIN
 LBLFEA9 RTS
 
 
-LBLFEAA JSR     LBLFF4E  ;Read cassette leader
-        LDX     #TBL425F ;tape filename block
-        STX     BUFFADR  ;cass buffer address
-        LDAA    #$0F    ;15 byte block length limit
+LBLFEAA JSR     LBLFF4E       ;Read cassette leader
+        LDX     #CASBUF       ;tape filename block
+        STX     CBUFAD        ;cass buffer address
+        LDAA    #$0F          ;15 byte block length limit
+        FCB     $CB           ;CPX #
 
-        FCB     $CB      ;CPX #
-LBLFEB6 LDAA    #$FF     ;(disable blocklength limit)
-        CLRB             ;enable writing
+;$FEB6  Load Block from Cassette
+BLKIN   LDAA    #$FF          ;(disable blocklength limit)
+        CLRB                  ;Enable Write to Memory (Load Block)
 
-LBLFEB9 PSHA     ;Read cassette block
-        STAB    ram4273
+;$FEB9  Read Block from Cassette
+BLKRD   PSHA                  ;Read cassette block
+        STAB    SKPFLG        ;
         NOP     
         SEI     
         BSR     LBLFE9C
-        LDX     BUFFADR  ;cass buffer address
+        LDX     CBUFAD          ;cass buffer address
         CLRA    
-LBLFEC5 BSR     LBLFF22  ;Read cassette bit
+LBLFEC5 BSR     BITIN       ;Read cassette bit
         RORA    
-        CMPA    #$3C     ;00111100
+        CMPA    #$3C          ;00111100
         BNE     LBLFEC5
-        BSR     LBLFF14   ;Read cassette char
-        STAA    BLKTYPE   ;cass block type flag
-        BSR     LBLFF14   ;Read cassette char
-        STAA    BLKLEN    ;cass block length
+        BSR     CASIN       ;Read cassette char
+        STAA    BLKTYP        ;cass block type flag
+        BSR     CASIN       ;Read cassette char
+        STAA    BLKLEN        ;cass block length
         PULB    
         CBA     
         BHI     LBLFF0B
-        ADDA    BLKTYPE  ;cass block type flag
-        STAA    CHKSUM   ;cass sumcheck
-        LDAA    BLKLEN   ;cass block length
-        STAA    LOADSTS  ;cass load status flag
-        BEQ     LBLFF01
-LBLFEE8 BSR     LBLFF14  ;Read cassette char
-        TST     ram4273
+        ADDA    BLKTYP        ;cass block type flag
+        STAA    CCKSUM        ;cass sumcheck
+        LDAA    BLKLEN        ;cass block length
+        STAA    LOADSTS       ;cass load status flag
+        BEQ     LBLFF01     
+LBLFEE8 BSR     CASIN       ;Read cassette char
+        TST     SKPFLG
         BNE     LBLFEF6  ;don't write if set
         STAA    ,X
         CMPA    ,X
         BNE     LBLFF0E
         INX    
-LBLFEF6 ADDA    CHKSUM        ;cass sumcheck
-        STAA    CHKSUM        ;cass sumcheck
+LBLFEF6 ADDA    CCKSUM        ;cass sumcheck
+        STAA    CCKSUM        ;cass sumcheck
         DEC     LOADSTS       ;cass load status flag
         BNE     LBLFEE8   
-LBLFF01 BSR     LBLFF14       ;Read cassette char
-        SUBA    CHKSUM        ;cass sumcheck
+LBLFF01 BSR     CASIN       ;Read cassette char
+        SUBA    CCKSUM        ;cass sumcheck
         BEQ     LBLFF10   
         LDAA    #$01          ;     #$01 - bad sumcheck
 
@@ -4482,30 +4517,32 @@ LBLFF10 STAA    LOADSTS       ;cass load status flag
         RTS
 
 
-LBLFF14 LDAA    #$08            ;Read cassette char->A
-        STAA    BITCNTR   ;cass byte load bit counter
-LBLFF19 BSR     LBLFF22   ;read cassette bit
+;$FF14
+CASIN   LDAA    #$08          ;Read cassette char->A
+BTSIN   STAA    BITCNTR       ;cass byte load bit counter
+BTCIN   BSR     BITIN         ;read cassette bit
         RORA    
-        DEC     BITCNTR   ;cass byte load bit counter
-        BNE     LBLFF19
+        DEC     BITCNTR       ;cass byte load bit counter
+        BNE     BTCIN
         RTS
 
 
-LBLFF22 BSR     LBLFF2C         ;Read cassette bit->C
-        LDAB    DURCNTR   ;tone duration counter
-        DECB    
-        CMPB    ram422C   ;cassette 1200/2400Hz partition
+;$FF22
+BITIN   BSR     LBLFF2C       ;Read cassette bit->C
+        LDAB    DURCNTR       ;tone duration counter
+        DECB        
+        CMPB    ram422C       ;cassette 1200/2400Hz partition
         RTS
 
 
-LBLFF2C CLR     DURCNTR  ;tone duration counter
-        TST     ram427E  ;cass polarity flag
-        BNE     LBLFF45  ;get 1->0 transition
-
-                         ;get 0->1 transition
-LBLFF34 BSR     LBLFF3D  ;Inc duration until 0
-        BNE     LBLFF34
-LBLFF38 BSR     LBLFF3D  ;Inc duration until 1
+LBLFF2C CLR     DURCNTR       ;tone duration counter
+        TST     ram427E       ;cass polarity flag
+        BNE     LBLFF45       ;get 1->0 transition
+      
+                              ;get 0->1 transition
+LBLFF34 BSR     LBLFF3D       ;Inc duration until 0
+        BNE     LBLFF34     
+LBLFF38 BSR     LBLFF3D       ;Inc duration until 1
         BEQ     LBLFF38
         RTS
 
@@ -4568,7 +4605,7 @@ LBLFF99 JSR     CHKCOM ; get ','
 LBLFF9C JSR     LBLEF0D   ; get num->B
         TSTB    
         BNE     LBLFFD1
-        JMP     FCERROR  ;?FC error if B=0
+        JMP     FCERR  ;?FC error if B=0
 
                 ; --- SOUND command ---
 C_SOUND
@@ -4607,12 +4644,12 @@ LBLFFD1 RTS
                 ; --- User ROM routines---
 
         FDB     SCANKBD         ;Scan keyboard
-        FDB     LBLF9C6         ;Write char to screen
+        FDB     OUTCH         ;Write char to screen
         FDB     LBLFF4E         ;Read cassette leader
-        FDB     LBLFEB9         ;Read cassette block
-        FDB     LBLFCC0         ;Write cassette block
+        FDB     BLKRD         ;Read cassette block
+        FDB     BLKOUT         ;Write cassette block
         FDB     LBLFFAB         ;Sound
-        FDB     LBLFCB7         ;Write cassette leader
+        FDB     WRLDR         ;Write cassette leader
         FDB     LBLECE3        ; return D to TXTTAB
         FDB     LBLEBC7        ; get result -> D
 

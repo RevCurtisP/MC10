@@ -1,0 +1,40 @@
+MC-10 Memory Map
+Curtis F Kaylor - 2020
+
+Hexadecimal   Decimal   Name    Src Description
+   93-94      149-150               Pointer to Start of BASIC Program
+   95-96      151-152               Pointer to Start of Variable Table
+   97-98      153-154               Pointer to Start of Array Table
+   99-9A      155-156               Pointer to End of Array Table
+   421B                             Cursor Flash Countdown
+      
+ 4250-4251  16976-16977             Pointer to End of Memory
+    
+ 4256-425E  16982-16990 CFBUF       Caassette File Name Buffer
+   4256       16982     FNLEN       File Name Length
+ 4257-425E  16983-16990 FNAM        File Name Buffer
+    
+ 425F-426D  16990-17005 HEADER        Cassette File Header Buffer
+ 425F-4266  16991-16998 FNAME       File Name: Padded with Spaces
+   4267        16999    FTYPE       File Type: 0=Basic, 4=Variable
+   4268        17000    DTYPE       Data Type: 0=Binary
+   4269        17001    GAPFLG      Gap Between Blocks Flag: 0=No
+ 426A-426B  17002-17003 XOFS        EXEC Address Offset
+ 426C-426D  17004-17005 LAL         Load Address
+   4275        17013    BLKTYP  CBU Cassette Block Type
+   4276        17014    BLKLEN  CBU Cassette Block Length
+   4277        17015                Unused
+ 4278-4279  17016-17017 CBUFAD  CBU Cassette Buffer Address
+   427A        17018    CCKSUM  CBU Cassette Block Checksum
+ 4280-4281  17024-17025             Address of Current Screen Location
+   4282        17026                Cursor Status: $00=One, $0F = Off
+ 42B2-4331  17074-17201             Input Buffer
+ 4335-4344  17205-17220             Number to String Result 
+   4346        17222                Start of BASIC Program
+    
+   FC3B                 CSAVE       Execute CSAVE Command
+   FC8B        64651    HWRITE      Parse Filename and Write Header to Cassette
+                        HDROUT      Copy File Name to Buffer, Write to Cassette
+   FCB7                 LWRITE      Write Leader to Cassette
+   FCBA                 SWRITE      Write SYNC Characters to Cassette
+   
