@@ -94,9 +94,6 @@ In Formatted mode, the directory is printed as follows:
                     CLOAD a BASIC program saved as ASCII without reporting
                     an error, the result will be unusable.
                                  
-                    This is also used for non-standard file types, in which
-                    case an asterisk is printed directly to the right.
-                                 
               BIN - The file contains Binary data. This could be an M/L
                     file, a VAR file, or a BAS file saved using the 
                     CSAVE "filename" command. Although the MC-10 and
