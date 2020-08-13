@@ -1,0 +1,3 @@
+This is line one.Embedded
+Line FeedElongated ON OFFThis will be overwritten by aCarriage ReturnIs this underlined? __________Strikethrough-------------Double Strike TextDouble Strike TextAccents: aeiou aeiou aeiou n         ''''' ````` """"" ~Repeat 11: *Elongated Text BlockEmbedded
+Line FeedOverwrite withCarriage ReturnRepeat 11: *Semigraphic CharactersΗόιβδΰεηκλθοξμΔΕElongated SemigraphicsΗόιβδΰεηκλθοξμΔΕLRI FILE: RABBIT€€€€€ƒƒƒ‚€€€€€€€€€€€‚€€€€€€€€€€…‹ƒƒ‚€€€€€€€€‹‹‚€€€€€„‚€€„‚€€€€€‡…‹€€€€€€„‡€€€€€€€ƒƒ‡€€€€€ƒ†€€€€€…‹ƒ€€€€€€€†…€€€…‡€€€€‹‡‹‚€€€€€„‹€€€€€€€€€€€€€€€€€€
