@@ -11,12 +11,12 @@ class TP10:
   
   #Internal Constants
   __columns = 32  #Number of characters on a line
-  __elongate = chr(127)
+  __elongate = chr(1)
 
   def __init__(self, debug=False):
+    self.__debug = debug
     self.__chars72dpi = self.__buildchars(self.__size72dpi, self.__data_72dpi)
     self.__chars600dpi = self.__buildchars(self.__size_600dpi, self.__data_600dpi)
-    self.__debug = debug
 
   def print(self, text, dpi):
     """Process formatted text and return image representing a printed page."""
@@ -31,7 +31,7 @@ class TP10:
     lines = []
     line = ""
     for c in text:
-      if (c > 255): continue
+      if (c > 255 or c<2 or c==127): continue
       if (escaped):
         if (c == 14): elongated = True
         elif (c == 15): elongated = False
@@ -51,8 +51,8 @@ class TP10:
       elif (repeat and count == None):
         count = c
       else:
+        if (c < 32): c = 127
         if (repeat):
-          if (c < 32 or c == 127): c = 128
           for i in range(0,count):
             if (elongated): line += self.__elongate
             line += chr(c)
@@ -61,7 +61,6 @@ class TP10:
         while (len(line) > 31):
           lines.append(line[0:32])
           line = line[32:]
-        if ((c > 1 and c < 32) or c == 127): c = 128
         if (elongated): line += self.__elongate
         line += chr(c)
     lines.append(line)
@@ -142,6 +141,18 @@ class TP10:
     if (self.__debug): print("New Page (size %d,%d)" % self.__pagesize)
     return page
 
+  def getdata(self, dpi):
+    dpi_type = type(dpi)
+    if (dpi_type != int):
+      raise TypeError("Invalid argument type %s" % dpi_type)
+    if (dpi == self.dpi72):
+      return self.__data_72dpi
+    elif (dpi == self.dpi600):
+      return self.__data_600dpi
+    else:
+      raise ValueError("Invalid argument %d" % dpi)
+    
+
   #Validate and Set DPI variables
   def __setdpi(self, dpi):
     dpi_type = type(dpi)
@@ -164,12 +175,23 @@ class TP10:
   #Build Character Image List from Image Data
   def __buildchars(self, size, data_list):
     char_list = []
+    mask_list = []
     for str_data in data_list:
+      if (self.__debug): print(type(str_data), str_data)
       int_data = map(int, str_data)
-      byte_data = bytes(bytearray(int_data))
-      char = Image.frombytes(self.__mode, size, byte_data)
+      if (self.__debug): print(type(str_data), str_data)
+      char = self.__buildchar(size, int_data)
       char_list.append(char)
     return char_list
+
+  #Build Character Image from Integer Array
+  def __buildchar(self, size, int_data):
+      byte_data = bytes(bytearray(int_data))
+      return Image.frombytes(self.__mode, size, byte_data)
+  
+  #Invert 8 bit integer
+  def __invert(self, i):
+    return 255 - i
 
   #Character Image Data
   __mode = "1"    #Image Mode - Monochrome
@@ -272,7 +294,7 @@ class TP10:
     [246,246,246,254,246,246,246,254,254,254,254,254],
     [238,246,246,250,246,246,238,254,254,254,254,254],
     [254,236,210,254,254,254,254,254,254,254,254,254],
-    [254,254,254,254,254,254,254,254,254,254,254,254],
+    [192,220,234,246,234,220,192,254,254,254,254,254],
     [254,254,254,254,254,254,254,254,254,254,254,254],
     [254,254,254,254,254,254,224,224,224,224,224,224],
     [254,254,254,254,254,254,30,30,30,30,30,30],
@@ -408,13 +430,18 @@ class TP10:
   ]
 
 def run():
-  with open("tp10test.txt", 'rb') as file:
+  tp10 = TP10(True)
+  exit()
+
+  txtfile = "LPRINT.TXT"
+  imgfile = "lprint.png"
+  with open(txtfile, 'rb') as file:
     text = file.read()
   print("Read text\n", text)
   
   tp10 = TP10(True)
   dpi = tp10.dpi72
-  tp10.print(text, dpi).save("tp10test.png", dpi=(dpi,dpi))
+  tp10.print(text, dpi).save(imgfile, dpi=(dpi,dpi))
 
 def main():
   parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
