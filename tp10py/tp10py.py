@@ -1,6 +1,6 @@
 #Tandy TP-10 Print Simulator
 
-from PIL import Image
+from PIL import Image, ImageOps
 import math
 
 class TP10:
@@ -15,8 +15,10 @@ class TP10:
 
   def __init__(self, debug=False):
     self.__debug = debug
-    self.__chars72dpi = self.__buildchars(self.__size72dpi, self.__data_72dpi)
-    self.__chars600dpi = self.__buildchars(self.__size_600dpi, self.__data_600dpi)
+    self.__chars72dpi = self.__buildchars(self.__size72dpi, self.__data72dpi)
+    self.__masks72dpi = self.__buildchars(self.__size72dpi, self.__data72dpi, self.__mask72dpi)
+    self.__chars600dpi = self.__buildchars(self.__size_600dpi, self.__data600dpi)
+    self.__masks600dpi = self.__buildchars(self.__size_600dpi, self.__data600dpi, self.__mask600dpi)
 
   def print(self, text, dpi):
     """Process formatted text and return image representing a printed page."""
@@ -30,27 +32,35 @@ class TP10:
     count = None
     lines = []
     line = ""
+    prefix = ""
+    wrapped = False
     for c in text:
-      if (c > 255 or c<2 or c==127): continue
-      if (escaped):
+      if (repeat and count == None):
+        count = c
+      elif (c > 255 or c<2 or c==127): 
+        continue
+      elif (escaped):
         if (c == 14): elongated = True
         elif (c == 15): elongated = False
         escaped = False
       elif (c == 10): 
-        lines.append(line)      #Simulate LF without CR
-        print(len(line))
+        lines.append(prefix + line)      #Simulate LF without CR
         line = ' ' * len(line)
+        prefix = ""
       elif (c == 13):
-        lines.append(line)      #Simulate CR/LF
-        line = ""
+        if (not wrapped):
+          lines.append(prefix + line)      #Simulate CR/LF
+          line = ""
+          prefix = ""
       elif (c == 26):
+        prefix += line.ljust(32)
         line = ""               #Simulate CR without LF
+        if (self.__debug): print('Prefix: "%s"' % prefix)
       elif (c == 27): escaped = True
       elif (c == 28): 
         repeat = True
-      elif (repeat and count == None):
-        count = c
       else:
+        wrapped = False
         if (c < 32): c = 127
         if (repeat):
           for i in range(0,count):
@@ -58,12 +68,15 @@ class TP10:
             line += chr(c)
           repeat = False
           count = None
-        while (len(line) > 31):
-          lines.append(line[0:32])
+        else:
+          if (elongated): line += self.__elongate
+          line += chr(c)
+        while (len(line) >= self.__columns):
+          lines.append(prefix + line[0:32])
           line = line[32:]
-        if (elongated): line += self.__elongate
-        line += chr(c)
-    lines.append(line)
+          prefix = ""
+          wrapped = True
+    lines.append(prefix + line)
     if (self.__debug): print("Generated raw text ", lines)
     return lines
 
@@ -86,25 +99,28 @@ class TP10:
     page = self.__newpage(rows)
     row = 0
     for line in lines:
+      if (self.__debug): print(row, line, len(line))
       elongated = False
       y = row * self.__height + self.__margin
       column = 0
       for char in line:
-        x = column * self.__width + self.__margin
+        x = column % self.__columns * self.__width + self.__margin
         c = ord(char)
         if (char == self.__elongate):
           elongated = True
           continue
         if (c > 127 and c < 255): c = c & 0b10001111
         i = c - ord(' ')
-        if (i > 0 and i < len(self.__chars) and column < self.__columns):
+        if (i > 0 and i < len(self.__chars)):
           clip = self.__chars[i]
+          mask = self.__masks[i]
           clip_width = self.__width
           if (elongated):
             clip_width *= 2
             clip = clip.resize((clip_width, self.__height))
+            mask = mask.resize((clip_width, self.__height))
           box = (x, y, x + clip_width, y + self.__height)
-          page.paste(clip, box)
+          page.paste(clip, box, mask)
         if (elongated):
           column += 2
           elongated = False
@@ -126,7 +142,7 @@ class TP10:
       if (len(line) >= self.__columns):
         lines.append(line)
         line = ""
-    if (line):
+    if line:
       lines.append(line)
     if (self.__debug): print("Built lines %s", lines)
     return self.page(lines, dpi)
@@ -146,12 +162,11 @@ class TP10:
     if (dpi_type != int):
       raise TypeError("Invalid argument type %s" % dpi_type)
     if (dpi == self.dpi72):
-      return self.__data_72dpi
+      return self.__data72dpi
     elif (dpi == self.dpi600):
-      return self.__data_600dpi
+      return self.__data600dpi
     else:
       raise ValueError("Invalid argument %d" % dpi)
-    
 
   #Validate and Set DPI variables
   def __setdpi(self, dpi):
@@ -161,9 +176,11 @@ class TP10:
     if (dpi == self.dpi72):
       self.__size = self.__size72dpi
       self.__chars = self.__chars72dpi
+      self.__masks = self.__masks72dpi
     elif (dpi == self.dpi600):
       self.__size = self.__size_600dpi
       self.__chars = self.__chars600dpi
+      self.__masks = self.__masks600dpi
     else:
       raise ValueError("Invalid argument %d" % dpi)
     self.__dpi = dpi
@@ -173,20 +190,20 @@ class TP10:
     if (self.__debug): print("DPI set to %d" % self.__dpi)
 
   #Build Character Image List from Image Data
-  def __buildchars(self, size, data_list):
+  def __buildchars(self, size, data_list, mask_byte=0):
     char_list = []
     mask_list = []
-    for str_data in data_list:
-      if (self.__debug): print(type(str_data), str_data)
-      int_data = map(int, str_data)
-      if (self.__debug): print(type(str_data), str_data)
-      char = self.__buildchar(size, int_data)
+    for int_data in data_list:
+      char = self.__buildchar(size, int_data, mask_byte)
       char_list.append(char)
     return char_list
 
   #Build Character Image from Integer Array
-  def __buildchar(self, size, int_data):
-      byte_data = bytes(bytearray(int_data))
+  def __buildchar(self, size, data_list, mask_byte):
+      int_list = []
+      for i in data_list:
+         int_list.append(i ^ mask_byte)
+      byte_data = bytes(int_list)
       return Image.frombytes(self.__mode, size, byte_data)
   
   #Invert 8 bit integer
@@ -197,8 +214,9 @@ class TP10:
   __mode = "1"    #Image Mode - Monochrome
   __color = 255   #Default Image Color - White
 
+  __mask72dpi = 254
   __size72dpi = (7, 12)
-  __data_72dpi = [
+  __data72dpi = [
     [254,254,254,254,254,254,254,254,254,254,254,254],
     [246,246,246,246,246,254,246,254,254,254,254,254],
     [234,234,234,254,254,254,254,254,254,254,254,254],
@@ -313,8 +331,9 @@ class TP10:
     [0,0,0,0,0,0,0,0,0,0,0,0],
   ]
 
+  __mask600dpi = 255
   __size_600dpi = (28, 48)
-  __data_600dpi = [
+  __data600dpi = [
     [255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240],
     [255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,31,240,255,255,31,240,255,255,31,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240],
     [255,241,241,240,255,241,241,240,255,241,241,240,255,255,255,240,255,241,241,240,255,241,241,240,255,241,241,240,255,255,255,240,255,241,241,240,255,241,241,240,255,241,241,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240,255,255,255,240],
@@ -430,11 +449,9 @@ class TP10:
   ]
 
 def run():
-  tp10 = TP10(True)
-  exit()
 
-  txtfile = "LPRINT.TXT"
-  imgfile = "lprint.png"
+  txtfile = "..\LPRINT.TXT"
+  imgfile = "tp10test.png"
   with open(txtfile, 'rb') as file:
     text = file.read()
   print("Read text\n", text)
